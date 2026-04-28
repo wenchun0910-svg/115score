@@ -210,7 +210,7 @@
                 <!-- 共用密碼區 -->
                 <div class="bg-[#F9F8F6] p-4 rounded border border-[#DCD3C6]">
                     <label class="block text-sm font-bold text-[#5B6E5B] mb-2 tracking-widest">管理員密碼</label>
-                    <input type="password" id="adminPwd" class="w-full border border-[#DCD3C6] rounded p-3 focus:ring-1 focus:ring-[#5B6E5B] outline-none bg-white" placeholder="請輸入密碼 (預設: admin123)">
+                    <input type="password" id="adminPwd" class="w-full border border-[#DCD3C6] rounded p-3 focus:ring-1 focus:ring-[#5B6E5B] outline-none bg-white" placeholder="請輸入密碼">
                 </div>
 
                 <!-- 匯入功能 -->
@@ -264,7 +264,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const ADMIN_PWD = "admin123"; 
+        const ADMIN_PWD = "Chun6680"; 
         let db, auth, userAuth;
         let examsCache = {}; 
         let sheetList = [];
