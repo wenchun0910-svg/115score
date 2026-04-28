@@ -76,7 +76,7 @@
             <h1 class="text-4xl font-black text-[#2C3539] tracking-widest">學生成績查詢</h1>
             <span class="text-[#8B2626] text-3xl ml-3"><i class="fa-solid fa-fan"></i></span>
         </div>
-        <p class="text-[#736F6E] mt-2 tracking-widest text-sm">學業成績管理系統</p>
+        <p class="text-[#736F6E] mt-2 tracking-widest text-sm">評量成績管理系統</p>
     </header>
 
     <div id="systemMsg" class="w-full max-w-md mb-4 hidden"></div>
@@ -157,6 +157,7 @@
     </div>
 
     <!-- ===== 專屬 PDF 列印的隱藏區塊 (橫式、無色彩、純表格、嚴格單頁) ===== -->
+    <!-- 加入 hidden class 預設隱藏 -->
     <div id="pdfExportContainer" class="hidden">
         <div class="text-center mb-10 relative">
             <h2 class="text-4xl font-black text-black tracking-[0.2em] border-b-2 border-black inline-block pb-2 px-10" id="pdfExportTitle">成績通知單</h2>
@@ -169,17 +170,24 @@
             <div class="text-2xl font-bold tracking-wider">備註(名次)：<span id="pdfExportNote"></span></div>
         </div>
 
+        <!-- 成績表格 -->
         <table class="w-full border-collapse border-2 border-black text-xl text-center mb-8">
-            <thead id="pdfExportTableHead"></thead>
-            <tbody id="pdfExportTableBody"></tbody>
+            <thead id="pdfExportTableHead">
+                <!-- JS 填入 -->
+            </thead>
+            <tbody id="pdfExportTableBody">
+                <!-- JS 填入 -->
+            </tbody>
         </table>
 
+        <!-- 印章與日期區塊 -->
         <div class="flex justify-end mt-10 pr-16">
             <div class="flex flex-col items-center">
                 <div class="flex items-center mb-3">
                     <span class="text-2xl font-bold text-black mr-6 tracking-widest">導師</span>
                     <div class="relative inline-block">
-                        <img src="000.jpg" alt="導師核章" class="w-24 object-contain mix-blend-multiply" onerror="this.style.display='none'; document.getElementById('pdfCssStamp').style.display='flex';">
+                        <!-- 修改：這裡確保使用的是您上傳的 image_0a7be2.png 印章圖檔 -->
+                        <img src="image_0a7be2.png" alt="導師核章" class="w-24 object-contain mix-blend-multiply" onerror="this.style.display='none'; document.getElementById('pdfCssStamp').style.display='flex';">
                         <div id="pdfCssStamp" class="hidden w-20 h-20 border-4 border-[#8B2626] text-[#8B2626] rounded items-center justify-center font-bold text-2xl transform -rotate-12 bg-white">
                             核章
                         </div>
@@ -202,7 +210,7 @@
                 <!-- 共用密碼區 -->
                 <div class="bg-[#F9F8F6] p-4 rounded border border-[#DCD3C6]">
                     <label class="block text-sm font-bold text-[#5B6E5B] mb-2 tracking-widest">管理員密碼</label>
-                    <input type="password" id="adminPwd" class="w-full border border-[#DCD3C6] rounded p-3 focus:ring-1 focus:ring-[#5B6E5B] outline-none bg-white" placeholder="請輸入密碼">
+                    <input type="password" id="adminPwd" class="w-full border border-[#DCD3C6] rounded p-3 focus:ring-1 focus:ring-[#5B6E5B] outline-none bg-white" placeholder="請輸入密碼 (預設: admin123)">
                 </div>
 
                 <!-- 匯入功能 -->
@@ -245,6 +253,7 @@
         </div>
     </div>
 
+    <!-- 管理員按鈕 -->
     <button onclick="toggleAdmin(true)" class="fixed bottom-6 right-6 bg-[#FFFFFF] border-2 border-[#DCD3C6] text-[#736F6E] hover:text-[#5B6E5B] hover:border-[#5B6E5B] w-14 h-14 rounded-full shadow-lg transition z-40 flex items-center justify-center text-xl">
         <i class="fa-solid fa-cog"></i>
     </button>
@@ -252,17 +261,16 @@
     <!-- Firebase SDK 模組載入 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // 修復：必須加入 signInWithCustomToken 來確保擁有資料寫入的權限
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const ADMIN_PWD = "Chun6680"; 
+        const ADMIN_PWD = "admin123"; 
         let db, auth, userAuth;
         let examsCache = {}; 
         let sheetList = [];
         let currentUserId = "";
 
-       const firebaseConfig = {
+              const firebaseConfig = {
   apiKey: "AIzaSyDbWIEljcpgW68WrLuT4UGl7S1Noy4h2hc",
   authDomain: "score01-e412d.firebaseapp.com",
   projectId: "score01-e412d",
@@ -270,6 +278,7 @@
   messagingSenderId: "602473479000",
   appId: "1:602473479000:web:2c728ba7da4f8f215a832d"
 };
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         function parseCSV(str) {
@@ -312,6 +321,9 @@
                     sheetList.push(doc.id);
                 });
 
+                // 新增：依照名稱遞減排序 (讓 114 排在 113 前面，第二次排在第一次前面)
+                sheetList.sort((a, b) => b.localeCompare(a, 'zh-TW'));
+
                 const btn = document.getElementById('loginBtn');
                 btn.innerHTML = '登入系統';
                 btn.disabled = false;
@@ -333,7 +345,6 @@
             db = getFirestore(app);
 
             try {
-                // 修復：取得完全授權，避免匯入時發生 Permission Denied 的錯誤
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -363,7 +374,6 @@
                 const exam = examsCache[examName];
                 if (!exam || !exam.rows) continue;
                 
-                // 修復：因為 Firebase 不支援巢狀陣列，讀取時我們將字串轉換回陣列
                 for (let item of exam.rows) {
                     const row = typeof item === 'string' ? JSON.parse(item) : item;
                     for(let i=0; i<3; i++) {
@@ -417,7 +427,6 @@
             if (!exam) return alert("資料讀取異常");
 
             const headers = exam.headers || [];
-            // 修復：讀取時將之前為了存入資料庫轉成的字串，重新解析為陣列
             const rows = exam.rows ? exam.rows.map(item => typeof item === 'string' ? JSON.parse(item) : item) : [];
 
             const map = { id: -1, seat: -1, name: -1, total: -1, note: -1 };
@@ -602,7 +611,10 @@
             sheetList.forEach(n => sel.innerHTML += `<option value="${n}">${n}</option>`);
         }
 
-        window.downloadPDF = function() {
+        // ==========================================
+        // 修改：讓 PDF 截圖前延遲，確保圖片有足夠時間載入
+        // ==========================================
+        window.downloadPDF = async function() {
             const btn = document.getElementById('pdfBtn');
             btn.innerHTML = '<div class="loader mr-2 border-t-white"></div> 產生中...';
             btn.disabled = true;
@@ -621,6 +633,9 @@
             const today = new Date();
             const dateStr = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
             document.getElementById('pdfExportDate').textContent = `列印日期：${dateStr}`;
+
+            // 給瀏覽器 0.5 秒的時間來渲染剛剛顯示出來的印章圖片
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
                 margin:       0, 
@@ -699,7 +714,6 @@
                     if(parsed.length < 2) throw new Error("CSV格式錯誤或無資料");
 
                     const headers = parsed[0];
-                    // 修復：為了避開 Firestore 不支援儲存「巢狀陣列」的限制，我們將每列資料轉成字串陣列
                     const rows = parsed.slice(1).map(row => JSON.stringify(row));
                     
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'exams', sheetName);
@@ -746,7 +760,6 @@
             }
         };
 
-        // 啟動系統
         initSystem();
     </script>
 </body>
