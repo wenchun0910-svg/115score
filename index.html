@@ -272,7 +272,14 @@
         let currentUserId = "";
 
         // 解析 Firebase 配置
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+      const firebaseConfig = {
+  apiKey: "AIzaSyA6weeUEAO2i_R3LSq1G7nhunY_PG7_su0",
+  authDomain: "score-f360c.firebaseapp.com",
+  projectId: "score-f360c",
+  storageBucket: "score-f360c.firebasestorage.app",
+  messagingSenderId: "521131451175",
+  appId: "1:521131451175:web:4bf4e06513e998416bbf02"
+};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // CSV 解析函數 (處理引號與換行)
