@@ -157,7 +157,6 @@
     </div>
 
     <!-- ===== 專屬 PDF 列印的隱藏區塊 (橫式、無色彩、純表格、嚴格單頁) ===== -->
-    <!-- 加入 hidden class 預設隱藏 -->
     <div id="pdfExportContainer" class="hidden">
         <div class="text-center mb-10 relative">
             <h2 class="text-4xl font-black text-black tracking-[0.2em] border-b-2 border-black inline-block pb-2 px-10" id="pdfExportTitle">成績通知單</h2>
@@ -170,17 +169,11 @@
             <div class="text-2xl font-bold tracking-wider">備註(名次)：<span id="pdfExportNote"></span></div>
         </div>
 
-        <!-- 成績表格 -->
         <table class="w-full border-collapse border-2 border-black text-xl text-center mb-8">
-            <thead id="pdfExportTableHead">
-                <!-- JS 填入 -->
-            </thead>
-            <tbody id="pdfExportTableBody">
-                <!-- JS 填入 -->
-            </tbody>
+            <thead id="pdfExportTableHead"></thead>
+            <tbody id="pdfExportTableBody"></tbody>
         </table>
 
-        <!-- 印章與日期區塊 -->
         <div class="flex justify-end mt-10 pr-16">
             <div class="flex flex-col items-center">
                 <div class="flex items-center mb-3">
@@ -252,27 +245,24 @@
         </div>
     </div>
 
-    <!-- 管理員按鈕 (右下角，改為日式印章風格) -->
     <button onclick="toggleAdmin(true)" class="fixed bottom-6 right-6 bg-[#FFFFFF] border-2 border-[#DCD3C6] text-[#736F6E] hover:text-[#5B6E5B] hover:border-[#5B6E5B] w-14 h-14 rounded-full shadow-lg transition z-40 flex items-center justify-center text-xl">
         <i class="fa-solid fa-cog"></i>
     </button>
 
     <!-- Firebase SDK 模組載入 -->
     <script type="module">
-        // Firebase 模組載入
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // 修復：必須加入 signInWithCustomToken 來確保擁有資料寫入的權限
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 系統變數
-        const ADMIN_PWD = "admin123"; // 前端簡易防護密碼
+        const ADMIN_PWD = "admin123"; 
         let db, auth, userAuth;
-        let examsCache = {}; // 暫存所有評量資料 { examName: { headers: [], rows: [] } }
+        let examsCache = {}; 
         let sheetList = [];
         let currentUserId = "";
 
-        // 解析 Firebase 配置
-const firebaseConfig = {
+       const firebaseConfig = {
   apiKey: "AIzaSyDbWIEljcpgW68WrLuT4UGl7S1Noy4h2hc",
   authDomain: "score01-e412d.firebaseapp.com",
   projectId: "score01-e412d",
@@ -282,7 +272,6 @@ const firebaseConfig = {
 };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // CSV 解析函數 (處理引號與換行)
         function parseCSV(str) {
             const arr = [];
             let quote = false;
@@ -303,7 +292,6 @@ const firebaseConfig = {
             return arr.filter(r => r && r.length > 0 && r.some(c => c.trim() !== ''));
         }
 
-        // 顯示訊息
         function showMsg(type, text) {
             const el = document.getElementById('systemMsg');
             if(!text) return el.classList.add('hidden');
@@ -311,7 +299,6 @@ const firebaseConfig = {
             el.textContent = text; el.classList.remove('hidden');
         }
 
-        // 載入遠端資料
         async function loadExamsData() {
             try {
                 const examsRef = collection(db, 'artifacts', appId, 'public', 'data', 'exams');
@@ -325,20 +312,16 @@ const firebaseConfig = {
                     sheetList.push(doc.id);
                 });
 
-                // 資料載入完成，開放登入按鈕
                 const btn = document.getElementById('loginBtn');
                 btn.innerHTML = '登入系統';
                 btn.disabled = false;
                 btn.classList.remove('cursor-not-allowed', 'opacity-70');
-
-                console.log("資料載入完畢，共", sheetList.length, "份評量。");
             } catch (err) {
                 console.error("讀取資料失敗:", err);
                 showMsg('error', '資料庫連線失敗，請重新整理頁面。');
             }
         }
 
-        // 初始化系統
         async function initSystem() {
             if (!Object.keys(firebaseConfig).length) {
                 showMsg('error', '尚未設定 Firebase 環境參數。');
@@ -349,9 +332,14 @@ const firebaseConfig = {
             auth = getAuth(app);
             db = getFirestore(app);
 
-            // 匿名登入
             try {
-                await signInAnonymously(auth);
+                // 修復：取得完全授權，避免匯入時發生 Permission Denied 的錯誤
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userAuth = user;
@@ -363,28 +351,26 @@ const firebaseConfig = {
                 showMsg('error', '系統驗證失敗。');
             }
         }
-
-        // ====== 暴露給 Window 的事件綁定 ======
         
         window.handleLogin = function() {
             const val = document.getElementById('loginIdInput').value.trim();
             if (val.length !== 5) return showMsg("error", "請輸入完整的 5 碼");
             
-            showMsg("", ""); // 清除錯誤
+            showMsg("", ""); 
             let foundName = null;
 
-            // 搜尋快取中的所有資料
             for (let examName of sheetList) {
                 const exam = examsCache[examName];
                 if (!exam || !exam.rows) continue;
                 
-                for (let row of exam.rows) {
-                    // 假設前3欄內一定有身分證
+                // 修復：因為 Firebase 不支援巢狀陣列，讀取時我們將字串轉換回陣列
+                for (let item of exam.rows) {
+                    const row = typeof item === 'string' ? JSON.parse(item) : item;
                     for(let i=0; i<3; i++) {
                         const str = String(row[i] || '').trim();
                         if (str.length >= 5 && str.slice(-5) === val) {
-                            foundName = row[2]; // 預設姓名在第3欄 (index 2)
-                            if (String(foundName).includes(val)) foundName = row[1]; // 若抓錯抓到ID，改抓第2欄
+                            foundName = row[2]; 
+                            if (String(foundName).includes(val)) foundName = row[1]; 
                             break;
                         }
                     }
@@ -431,9 +417,9 @@ const firebaseConfig = {
             if (!exam) return alert("資料讀取異常");
 
             const headers = exam.headers || [];
-            const rows = exam.rows || [];
+            // 修復：讀取時將之前為了存入資料庫轉成的字串，重新解析為陣列
+            const rows = exam.rows ? exam.rows.map(item => typeof item === 'string' ? JSON.parse(item) : item) : [];
 
-            // 1. 動態解析標題列
             const map = { id: -1, seat: -1, name: -1, total: -1, note: -1 };
             const subjects = {}; 
             const subjectOrder = [];
@@ -460,7 +446,6 @@ const firebaseConfig = {
                 }
             });
 
-            // 2. 尋找學生
             let targetRow = null;
             for (let row of rows) {
                 const idStr = String(row[map.id] || '').trim();
@@ -475,7 +460,6 @@ const firebaseConfig = {
                 return;
             }
 
-            // 3. 整理資料
             const s = {
                 seat: (map.seat !== -1) ? targetRow[map.seat] : "",
                 name: (map.name !== -1) ? targetRow[map.name] : "",
@@ -493,7 +477,6 @@ const firebaseConfig = {
                 });
             });
 
-            // 4. 計算統計
             const stats = {};
             subjectOrder.forEach(subName => {
                 const idxs = subjects[subName];
@@ -519,16 +502,13 @@ const firebaseConfig = {
                 }
             });
 
-            renderResultUI(s, stats, subjectList, sheetName);
+            renderResultUI(s, stats, subjectOrder.map(name => s.subjects.find(sub => sub.name === name)), sheetName);
         };
 
         function renderResultUI(s, stats, subjectList, sheetName) {
             document.getElementById('resultContent').classList.remove('hidden');
             const showDaily = s.subjects.some(sub => sub.daily !== '-' && sub.daily !== '');
 
-            // =====================================
-            // 1. 渲染網頁畫面
-            // =====================================
             document.getElementById('resSeat').textContent = s.seat;
             document.getElementById('resName').textContent = s.name;
             document.getElementById('resNote').textContent = s.note || '--';
@@ -591,9 +571,6 @@ const firebaseConfig = {
                 }
             });
 
-            // =====================================
-            // 2. 渲染 PDF
-            // =====================================
             document.getElementById('pdfExportTitle').textContent = `${sheetName} 成績通知單`;
             document.getElementById('pdfExportSeat').textContent = s.seat;
             document.getElementById('pdfExportName').textContent = s.name;
@@ -672,7 +649,6 @@ const firebaseConfig = {
             });
         };
 
-        // --- 管理員功能 ---
         window.toggleAdmin = function(show) {
             const panel = document.getElementById('adminPanel');
             if (show) {
@@ -701,7 +677,7 @@ const firebaseConfig = {
         };
 
         window.uploadCSV = async function() {
-            if(!userAuth) return alert("尚未連線資料庫");
+            if(!userAuth) return alert("尚未連線資料庫或權限不足");
             const pwd = document.getElementById('adminPwd').value;
             const fileInput = document.getElementById('csvFile');
             const sheetName = document.getElementById('targetSheetName').value;
@@ -723,13 +699,14 @@ const firebaseConfig = {
                     if(parsed.length < 2) throw new Error("CSV格式錯誤或無資料");
 
                     const headers = parsed[0];
-                    const rows = parsed.slice(1);
+                    // 修復：為了避開 Firestore 不支援儲存「巢狀陣列」的限制，我們將每列資料轉成字串陣列
+                    const rows = parsed.slice(1).map(row => JSON.stringify(row));
                     
                     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'exams', sheetName);
                     await setDoc(docRef, { headers, rows, createdAt: new Date().getTime() });
                     
                     status.innerHTML = `<span class="text-[#5B6E5B] font-bold">匯入成功！重新讀取中...</span>`;
-                    await loadExamsData(); // 重新整理本地快取
+                    await loadExamsData(); 
                     document.getElementById('adminPwd').value = '';
                     window.toggleAdmin(false);
                     alert("匯入成功！");
@@ -738,7 +715,6 @@ const firebaseConfig = {
                     status.innerHTML = `<span class="text-[#8B2626] font-bold">處理失敗: ${err.message}</span>`;
                 }
             };
-            // 因瀏覽器本地解析，預設 UTF-8。若遇到 Big5，可改 readAsText(file, 'Big5')
             reader.readAsText(fileInput.files[0], 'UTF-8'); 
         };
 
